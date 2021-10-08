@@ -91,6 +91,14 @@ export default {
     tags: {
       type: Array,
       required: true,
+    },
+    char:{
+      type: String,
+      required: true,
+    },
+    closing_tag:{
+      type: String,
+      required: false
     }
   },
 
@@ -101,6 +109,8 @@ export default {
   },
 
   mounted() {
+    console.log(this.closing_tag)
+    const _this = this
     this.editor = new Editor({
       extensions: [
         Underline,
@@ -110,10 +120,10 @@ export default {
             class: 'ptag',
           },
           renderLabel({ options, node }) {
-            return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}}}`
+            return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}` + _this.closing_tag|| ''
           },
           suggestion: {
-            char: '{{',
+            char: this.char,
             items: query => {
               return this.tags.filter(item => item.toLowerCase().startsWith(query.toLowerCase())).slice(0, 10)
             },

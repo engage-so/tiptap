@@ -8,13 +8,19 @@
 </head>
 <body>
     <div id="wrapper">
-      <tiptap-editor :tags="[
+      <tiptap-editor  :closing_tag="closingTag" :tags="[
       'first_name', 'last_name', 'email', 'uid'
-    ]"></tiptap-editor>
+    ]" :char="char"> </tiptap-editor>
     </div>
     <script>
     var app = new Vue({
-      el : '#wrapper'
+      el : '#wrapper',
+      data(){
+        return{
+          closingTag:"", // }}
+          char:"@" // {{
+        }
+      }
     });
     </script>
 </body>
