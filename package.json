@@ -1,11 +1,12 @@
 {
   "name": "engage-tiptap",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Compiled tiptap library for umd",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --mode development"
+    "build": "webpack --mode development",
+    "compile": "webpack --mode production"
   },
   "license": "MIT",
   "devDependencies": {
@@ -34,13 +35,15 @@
     "webpack-dev-server": "^4.3.1"
   },
   "dependencies": {
-    "@tiptap/extension-bubble-menu": "^2.0.0-beta.39",
-    "@tiptap/extension-floating-menu": "^2.0.0-beta.33",
-    "@tiptap/extension-mention": "^2.0.0-beta.74",
+    "@tiptap/extension-bubble-menu": "^2.0.0-beta.40",
+    "@tiptap/extension-floating-menu": "^2.0.0-beta.34",
+    "@tiptap/extension-image": "^2.0.0-beta.16",
+    "@tiptap/extension-link": "^2.0.0-beta.21",
+    "@tiptap/extension-mention": "^2.0.0-beta.75",
+    "@tiptap/extension-placeholder": "^2.0.0-beta.32",
     "@tiptap/extension-underline": "^2.0.0-beta.16",
-    "@tiptap/starter-kit": "^2.0.0-beta.117",
-    "@tiptap/vue-2": "^2.0.0-beta.57",
-    "@tiptap/vue-3": "^2.0.0-beta.67",
+    "@tiptap/starter-kit": "^2.0.0-beta.119",
+    "@tiptap/vue-2": "^2.0.0-beta.58",
     "core-js": "^2.6.9",
     "vue": "^2.6.10",
     "vue-material-design-icons": "^4.13.0"

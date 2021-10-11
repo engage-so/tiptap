@@ -1,5 +1,6 @@
 <template>
   <div v-if="editor" class="tiptap-editor">
+
     <floating-menu :editor="editor" class="floating-menu">
       <button @click="editor.chain().focus().toggleHeading({ level: 1 }).run()" :class="{ 'is-active': editor.isActive('heading', { level: 1 }) }">
         <format-header1 />
@@ -16,9 +17,12 @@
       <button @click="editor.chain().focus().toggleOrderedList().run()" :class="{ 'is-active': editor.isActive('orderedList') }">
         <format-list-bulleted />
       </button>
+      <button>
+        <label><image-area /><span style="display:none"><input type="file" accept="image/*" @change="uploadImage"></span></label>
+      </button>
     </floating-menu>
 
-    <bubble-menu :editor="editor" class="bubble-menu">
+    <bubble-menu :editor="editor" v-show="!editor.isActive('customimage')" class="bubble-menu">
       <button @click="editor.chain().focus().toggleHeading({ level: 1 }).run()" :class="{ 'is-active': editor.isActive('heading', { level: 1 }) }">
         <format-header1 />
       </button>
@@ -34,6 +38,9 @@
       <button @click="editor.chain().focus().toggleItalic().run()" :class="{ 'is-active': editor.isActive('italic') }">
         <format-italic />
       </button>
+      <button @click="openLink" :class="{ 'is-active': editor.isActive('link') }">
+        <link-variant />
+      </button>
       <button @click="editor.chain().focus().toggleUnderline().run()" :class="{ 'is-active': editor.isActive('underline') }">
         <format-underline />
       </button>
@@ -45,6 +52,19 @@
       </button>
       <button @click="editor.chain().focus().toggleOrderedList().run()" :class="{ 'is-active': editor.isActive('orderedList') }">
         <format-list-bulleted />
+      </button>
+      <div class="link" v-show="showLinkPop">
+        <form @submit.prevent="onSubmitLink"><input type="text" ref="url" @blur="hideLinkPop" placeholder="https://" v-model="linkUrl"><button type="button" @click="unsetLink"><close /></button></form>
+      </div>
+    </bubble-menu>
+
+    <bubble-menu :editor="editor" v-show="editor.isActive('customimage') && !editor.getAttributes('customimage').uploading" :tippyOptions="{ placement: 'top-start' }" class="bubble-menu">
+      <div>Size:</div>
+      <button @click="editor.chain().focus().setImage({ width: 'decr' }).run()">
+        <minus />
+      </button>
+      <button @click="editor.chain().focus().setImage({ width: 'inc' }).run()">
+        <plus />
       </button>
     </bubble-menu>
 
@@ -59,6 +79,14 @@ import Underline from '@tiptap/extension-underline'
 import Mention from '@tiptap/extension-mention'
 import MentionList from './MentionList.vue'
 import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
+import Link from '@tiptap/extension-link'
+
+import { PluginKey } from 'prosemirror-state'
+
+import Tag from './extensions/tag'
+import CustomImage from './extensions/custom-image'
+import uploadFile from './extensions/upload'
 
 import FormatBold from 'vue-material-design-icons/FormatBold.vue'
 import FormatStrikethrough from 'vue-material-design-icons/FormatStrikethrough.vue'
@@ -69,6 +97,11 @@ import FormatHeader2 from 'vue-material-design-icons/FormatHeader2.vue'
 import FormatHeader3 from 'vue-material-design-icons/FormatHeader3.vue'
 import FormatListBulleted from 'vue-material-design-icons/FormatListBulleted.vue'
 import FormatListNumbered from 'vue-material-design-icons/FormatListNumbered.vue'
+import LinkVariant from 'vue-material-design-icons/LinkVariant.vue'
+import Close from 'vue-material-design-icons/Close.vue'
+import ImageArea from 'vue-material-design-icons/ImageArea.vue'
+import Minus from 'vue-material-design-icons/Minus.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
 
 export default {
   name: 'tiptapEditor',
@@ -82,6 +115,12 @@ export default {
     FormatHeader3,
     FormatListBulleted,
     FormatListNumbered,
+    LinkVariant,
+    Close,
+    ImageArea,
+    Plus,
+    Minus,
+
     EditorContent,
     FloatingMenu,
     BubbleMenu
@@ -90,27 +129,48 @@ export default {
   props: {
     tags: {
       type: Array,
-      required: true,
+      default() {
+          return []
+      }
+    },
+    mentions: {
+      type: Array,
+      default() {
+          return []
+      }
+    },
+    photos: {
+      type: Array
+    },
+    placeholder: {
+      type: String
     }
   },
 
   data() {
     return {
-      editor: null
+      imageTab: this.photos?.length ? 'gallery' : 'upload',
+      showLinkPop: false,
+      linkUrl: '',
+      editor: null,
+      autofocus: false
     }
   },
 
   mounted() {
     this.editor = new Editor({
       extensions: [
-        Underline,
         StarterKit,
-        Mention.configure({
+        Underline,
+        Link.configure({
+          openOnClick: false,
+        }),
+        Placeholder.configure({
+          placeholder: this.placeholder ?? 'Write something...',
+        }),
+        Tag.configure({
           HTMLAttributes: {
             class: 'ptag',
-          },
-          renderLabel({ options, node }) {
-            return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}}}`
           },
           suggestion: {
             char: '{{',
@@ -160,33 +220,171 @@ export default {
                 },
               }
             },
-          },
+          }
         }),
+        Mention.configure({
+          HTMLAttributes: {
+            class: 'mention',
+          },
+          renderLabel({ options, node }) {
+            return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`
+          },
+          suggestion: {
+            char: '@',
+            items: query => {
+              return this.mentions.filter(item => item.toLowerCase().startsWith(query.toLowerCase())).slice(0, 10)
+            },
+            render: () => {
+              let component
+              let popup
+
+              return {
+                onStart: props => {
+                  component = new VueRenderer(MentionList, {
+                    parent: this,
+                    propsData: props,
+                  })
+
+                  popup = tippy('body', {
+                    getReferenceClientRect: props.clientRect,
+                    appendTo: () => document.body,
+                    content: component.element,
+                    showOnCreate: true,
+                    interactive: true,
+                    trigger: 'manual',
+                    placement: 'bottom-start',
+                  })
+                },
+                onUpdate(props) {
+                  component.updateProps(props)
+
+                  popup[0].setProps({
+                    getReferenceClientRect: props.clientRect,
+                  })
+                },
+                onKeyDown(props) {
+                  if (props.event.key === 'Escape') {
+                    popup[0].hide()
+
+                    return true
+                  }
+
+                  return component.ref?.onKeyDown(props)
+                },
+                onExit() {
+                  popup[0].destroy()
+                  component.destroy()
+                }
+              }
+            }
+          }
+        }),
+        CustomImage.configure({
+          upload: uploadFile
+        })
       ],
-      content: `
-        <p>Hi everyone! Don’t forget the daily stand up at 8 AM.</p>
-        <p><span data-mention data-id="Jennifer Grey"></span> Would you mind to share what you’ve been working on lately? We fear not much happened since Dirty Dancing.
-        <p><span data-mention data-id="Winona Ryder"></span> <span data-mention data-id="Axl Rose"></span> Let’s go through your most important points quickly.</p>
-        <p>I have a meeting with <span data-mention data-id="Christina Applegate"></span> and don’t want to come late.</p>
-        <p>– Thanks, your big boss</p>
-      `,
+      autofocus: this.autofocus
     })
   },
 
   beforeUnmount() {
     this.editor.destroy()
   },
+
+  methods: {
+    openLink() {
+      this.showLinkPop = true
+      this.$nextTick(() => {
+        this.$refs.url.focus()
+      })
+    },
+    hideLinkPop() {
+      setTimeout(() => {
+        this.showLinkPop = false
+      }, 200)
+    },
+    onSubmitLink() {
+      this.showLinkPop = false
+
+      // empty
+      if (this.linkUrl === '') {
+        this.editor
+          .chain()
+          .focus()
+          .extendMarkRange('link')
+          .unsetLink()
+          .run()
+
+        return
+      }
+
+      // update link
+      this.editor
+        .chain()
+        .focus()
+        .extendMarkRange('link')
+        .setLink({ href: this.linkUrl })
+        .run()
+    },
+    unsetLink() {
+      this.linkUrl = ''
+      this.editor
+        .chain()
+        .focus()
+        .extendMarkRange('link')
+        .unsetLink()
+        .run()
+    },
+    uploadImage(e) {
+      const files = e.target.files || e.dataTransfer.files
+      if (!files.length) return
+      const image = files[0]
+      this.editor
+        .chain()
+        .focus()
+        .setImage({ upload: image, uploadFnc: uploadFile })
+        .run()
+    }
+  }
 }
 </script>
 
 <style lang="scss">
-
 .ProseMirror {
   padding: 10px 20px;
+  outline: 0;
 
   > * + * {
     margin-top: 0.75em;
   }
+
+  p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #ced4da;
+    pointer-events: none;
+    height: 0;
+  }
+}
+
+.ProseMirror-focused {
+  p.is-editor-empty:first-child::before {
+    color: transparent;
+  }
+}
+
+.lh-copy {
+  line-height: 1.2rem
+}
+.flex {
+  display: flex;
+}
+.w-100 {
+  width: 100%
+}
+.center {
+  text-align: center;
+  padding: 4rem
 }
 
 .ptag {
@@ -195,9 +393,16 @@ export default {
   border-radius: 0.3rem;
   padding: 0.1rem 0.3rem;
 }
+.mention {
+  color: #1322c4;
+  background-color: rgba(#1322c4, 0.1);
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.3rem;
+}
 
 .bubble-menu {
   display: flex;
+  color: #fafafa;
   background-color: #0D0D0D;
   padding: 0.2rem;
   border-radius: 0.3rem;
@@ -219,6 +424,46 @@ export default {
     &:hover,
     &.is-active {
       opacity: 1;
+    }
+  }
+
+  .link {
+    z-index: 1;
+    padding: 0.3rem;
+    position: absolute;
+    background-color: #fafafa;
+    border-radius: 0.2rem;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.1),
+      0px 10px 20px rgba(0, 0, 0, 0.1)
+    ;
+    
+    form {
+      display: flex;
+      align-items: center;
+    }
+
+    input {
+      border: 1px solid #bbb;
+      min-width: 200px;
+      border-radius: 0.2rem;
+      outline: 0;
+      padding: 3px
+    }
+
+    button {
+      border: none;
+      background: none;
+      color: rgb(119, 8, 8);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0 0.2rem;
+      opacity: 0.6;
+
+      &:hover,
+      &.is-active {
+        opacity: 1;
+      }
     }
   }
 }
@@ -246,6 +491,59 @@ export default {
     &.is-active {
       opacity: 1;
     }
+  }
+}
+
+.image-wrp {
+  z-index: 1;
+  padding: 1rem;
+  position: absolute;
+  width: 50%;
+  max-height: 50%;
+  overflow-y: scroll;
+  left: 25%;
+  background-color: #fafafa;
+  border-radius: 0.2rem;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.1),
+    0px 10px 20px rgba(0, 0, 0, 0.1)
+  ;
+
+  nav {
+    display: flex;
+    margin-bottom: 1rem;
+
+    a {
+      display: block;
+      padding-right: 0.8rem;
+      color: #777;
+      text-decoration: none;
+
+      &:hover,
+      &.is-active {
+        color: #000;
+      }
+    }
+  }
+
+  .dropzone {
+    border: 1px dashed #ccc;
+    text-align: center;
+    padding: 4rem
+  }
+}
+
+img {
+  max-width: 100%;
+  display: block;
+  height: auto;
+
+  &.ProseMirror-selectednode {
+    outline: 3px solid #68CEF8;
+  }
+
+  &[uploading=true] {
+    opacity: 0.4;
   }
 }
 </style>
