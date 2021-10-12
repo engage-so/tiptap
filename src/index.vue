@@ -68,7 +68,7 @@
       </button>
     </bubble-menu>
 
-    <editor-content :editor="editor" />
+    <editor-content :editor="editor" v-model="value" />
   </div>
 </template>
 
@@ -81,8 +81,6 @@ import MentionList from './MentionList.vue'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Link from '@tiptap/extension-link'
-
-import { PluginKey } from 'prosemirror-state'
 
 import Tag from './extensions/tag'
 import CustomImage from './extensions/custom-image'
@@ -127,6 +125,9 @@ export default {
   },
 
   props: {
+    value: {
+      type: String
+    },
     tags: {
       type: Array,
       default() {
@@ -145,6 +146,10 @@ export default {
     placeholder: {
       type: String
     }
+  },
+
+  watch: {
+
   },
 
   data() {
@@ -232,7 +237,11 @@ export default {
           suggestion: {
             char: '@',
             items: query => {
-              return this.mentions.filter(item => item.toLowerCase().startsWith(query.toLowerCase())).slice(0, 10)
+              return this.mentions.filter(item => {
+                return item.value ?
+                  item.value.toLowerCase().startsWith(query.toLowerCase()) :
+                  item.toLowerCase().startsWith(query.toLowerCase())
+              }).slice(0, 10)
             },
             render: () => {
               let component
@@ -283,7 +292,12 @@ export default {
           upload: uploadFile
         })
       ],
-      autofocus: this.autofocus
+      autofocus: this.autofocus,
+      onUpdate: ({ editor }) => {
+        console.log(editor.getJSON())
+        this.$emit("input", editor.getHTML())
+      },
+      content: this.value
     })
   },
 
@@ -350,115 +364,143 @@ export default {
 </script>
 
 <style lang="scss">
-.ProseMirror {
-  padding: 10px 20px;
-  outline: 0;
+.tiptap-editor {
+  .ProseMirror {
+    padding: 10px 20px;
+    outline: 0;
 
-  > * + * {
-    margin-top: 0.75em;
-  }
-
-  p.is-editor-empty:first-child::before {
-    content: attr(data-placeholder);
-    float: left;
-    color: #ced4da;
-    pointer-events: none;
-    height: 0;
-  }
-}
-
-.ProseMirror-focused {
-  p.is-editor-empty:first-child::before {
-    color: transparent;
-  }
-}
-
-.lh-copy {
-  line-height: 1.2rem
-}
-.flex {
-  display: flex;
-}
-.w-100 {
-  width: 100%
-}
-.center {
-  text-align: center;
-  padding: 4rem
-}
-
-.ptag {
-  color: #555;
-  background-color: rgba(#555, 0.1);
-  border-radius: 0.3rem;
-  padding: 0.1rem 0.3rem;
-}
-.mention {
-  color: #1322c4;
-  background-color: rgba(#1322c4, 0.1);
-  border-radius: 0.3rem;
-  padding: 0.1rem 0.3rem;
-}
-
-.bubble-menu {
-  display: flex;
-  color: #fafafa;
-  background-color: #0D0D0D;
-  padding: 0.2rem;
-  border-radius: 0.3rem;
-
-  button {
-    border: none;
-    background: none;
-    color: #FFF;
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 0 0.2rem;
-    opacity: 0.6;
-
-    svg {
-      width: 18px;
-      height: 18px;
+    > * + * {
+      margin-top: 0.75em;
     }
 
-    &:hover,
-    &.is-active {
-      opacity: 1;
+    p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder);
+      float: left;
+      color: #ced4da;
+      pointer-events: none;
+      height: 0;
     }
   }
 
-  .link {
-    z-index: 1;
-    padding: 0.3rem;
-    position: absolute;
-    background-color: #fafafa;
-    border-radius: 0.2rem;
-    box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.1),
-      0px 10px 20px rgba(0, 0, 0, 0.1)
-    ;
-    
-    form {
-      display: flex;
-      align-items: center;
+  .ProseMirror-focused {
+    p.is-editor-empty:first-child::before {
+      color: transparent;
     }
+  }
 
-    input {
-      border: 1px solid #bbb;
-      min-width: 200px;
-      border-radius: 0.2rem;
-      outline: 0;
-      padding: 3px
-    }
+  .lh-copy {
+    line-height: 1.2rem
+  }
+  .flex {
+    display: flex;
+  }
+  .w-100 {
+    width: 100%
+  }
+  .center {
+    text-align: center;
+    padding: 4rem
+  }
+
+  .ptag {
+    color: #555;
+    background-color: rgba(#555, 0.1);
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.3rem;
+  }
+  .mention {
+    color: #1322c4;
+    background-color: rgba(#1322c4, 0.1);
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.3rem;
+  }
+
+  .bubble-menu {
+    display: flex;
+    color: #fafafa;
+    background-color: #0D0D0D;
+    padding: 0.2rem;
+    border-radius: 0.3rem;
 
     button {
       border: none;
       background: none;
-      color: rgb(119, 8, 8);
+      color: #FFF;
       font-size: 0.85rem;
       font-weight: 500;
       padding: 0 0.2rem;
       opacity: 0.6;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      &:hover,
+      &.is-active {
+        opacity: 1;
+      }
+    }
+
+    .link {
+      z-index: 1;
+      padding: 0.3rem;
+      position: absolute;
+      background-color: #fafafa;
+      border-radius: 0.2rem;
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.1),
+        0px 10px 20px rgba(0, 0, 0, 0.1)
+      ;
+      
+      form {
+        display: flex;
+        align-items: center;
+      }
+
+      input {
+        border: 1px solid #bbb;
+        min-width: 200px;
+        border-radius: 0.2rem;
+        outline: 0;
+        padding: 3px
+      }
+
+      button {
+        border: none;
+        background: none;
+        color: rgb(119, 8, 8);
+        font-size: 0.85rem;
+        font-weight: 500;
+        padding: 0 0.2rem;
+        opacity: 0.6;
+
+        &:hover,
+        &.is-active {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  .floating-menu {
+    display: flex;
+    background-color: #0D0D0D10;
+    padding: 0.2rem;
+    border-radius: 0.3rem;
+
+    button {
+      border: none;
+      background: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0 0.2rem;
+      opacity: 0.6;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
 
       &:hover,
       &.is-active {
@@ -466,84 +508,58 @@ export default {
       }
     }
   }
-}
 
-.floating-menu {
-  display: flex;
-  background-color: #0D0D0D10;
-  padding: 0.2rem;
-  border-radius: 0.3rem;
+  .image-wrp {
+    z-index: 1;
+    padding: 1rem;
+    position: absolute;
+    width: 50%;
+    max-height: 50%;
+    overflow-y: scroll;
+    left: 25%;
+    background-color: #fafafa;
+    border-radius: 0.2rem;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.1),
+      0px 10px 20px rgba(0, 0, 0, 0.1)
+    ;
 
-  button {
-    border: none;
-    background: none;
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 0 0.2rem;
-    opacity: 0.6;
+    nav {
+      display: flex;
+      margin-bottom: 1rem;
 
-    svg {
-      width: 18px;
-      height: 18px;
-    }
+      a {
+        display: block;
+        padding-right: 0.8rem;
+        color: #777;
+        text-decoration: none;
 
-    &:hover,
-    &.is-active {
-      opacity: 1;
-    }
-  }
-}
-
-.image-wrp {
-  z-index: 1;
-  padding: 1rem;
-  position: absolute;
-  width: 50%;
-  max-height: 50%;
-  overflow-y: scroll;
-  left: 25%;
-  background-color: #fafafa;
-  border-radius: 0.2rem;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.1),
-    0px 10px 20px rgba(0, 0, 0, 0.1)
-  ;
-
-  nav {
-    display: flex;
-    margin-bottom: 1rem;
-
-    a {
-      display: block;
-      padding-right: 0.8rem;
-      color: #777;
-      text-decoration: none;
-
-      &:hover,
-      &.is-active {
-        color: #000;
+        &:hover,
+        &.is-active {
+          color: #000;
+        }
       }
     }
+
+    .dropzone {
+      border: 1px dashed #ccc;
+      text-align: center;
+      padding: 4rem
+    }
   }
 
-  .dropzone {
-    border: 1px dashed #ccc;
-    text-align: center;
-    padding: 4rem
-  }
-}
+  img {
+    max-width: 100%;
+    display: block;
+    height: auto;
 
-img {
-  max-width: 100%;
-  display: block;
-  height: auto;
+    &.ProseMirror-selectednode {
+      outline: 3px solid #68CEF8;
+    }
 
-  &.ProseMirror-selectednode {
-    outline: 3px solid #68CEF8;
-  }
-
-  &[uploading=true] {
-    opacity: 0.4;
+    &[uploading=true] {
+      opacity: 0.4;
+    }
   }
 }
 </style>

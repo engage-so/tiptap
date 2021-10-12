@@ -2,19 +2,32 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>VueJS Component Test</title>
+    <title>Tiptap</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="dist/index.js"></script>
 </head>
 <body>
     <div id="wrapper">
-      <tiptap-editor :tags="[
-      'first_name', 'last_name', 'email', 'uid'
-    ]" :mentions="['Esther', 'Wole']" placeholder="Start writing..."></tiptap-editor>
+      <tiptap-editor :tags="['ope', 'obe']" :mentions="[
+        {
+          id: '1',
+          value: 'esther'
+        }, {
+          id: 2,
+          value: 'wole'
+        }]" placeholder="Start writing..." v-model="value"></tiptap-editor>
     </div>
     <script>
     var app = new Vue({
-      el : '#wrapper'
+      el : '#wrapper',
+      data: {
+        value: ''
+      },
+      watch: {
+        value(n, v) {
+          console.log(n, v)
+        }
+      }
     });
     </script>
 </body>

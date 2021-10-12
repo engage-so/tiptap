@@ -7,7 +7,7 @@
       :key="index"
       @click="selectItem(index)"
     >
-      {{ item }}
+      {{ item.value ? item.value : item }}
     </button>
   </div>
 </template>
@@ -76,7 +76,7 @@ export default {
       const item = this.items[index]
 
       if (item) {
-        this.command({ id: item })
+        this.command({ id: item.id ?? item, label: item.value ?? item })
       }
     },
   },
