@@ -1,6 +1,6 @@
 {
   "name": "engage-tiptap",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Compiled tiptap library for umd",
   "main": "index.js",
   "scripts": {

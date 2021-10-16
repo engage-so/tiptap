@@ -1,7 +1,6 @@
 <template>
   <div v-if="editor" class="tiptap-editor">
-
-    <floating-menu :editor="editor" class="floating-menu">
+    <floating-menu v-if="mode !== 'simple'" :editor="editor" class="floating-menu">
       <button @click="editor.chain().focus().toggleHeading({ level: 1 }).run()" :class="{ 'is-active': editor.isActive('heading', { level: 1 }) }">
         <format-header1 />
       </button>
@@ -17,12 +16,12 @@
       <button @click="editor.chain().focus().toggleOrderedList().run()" :class="{ 'is-active': editor.isActive('orderedList') }">
         <format-list-bulleted />
       </button>
-      <button>
+      <button v-if="mode !== 'no-image'">
         <label><image-area /><span style="display:none"><input type="file" accept="image/*" @change="uploadImage"></span></label>
       </button>
     </floating-menu>
 
-    <bubble-menu :editor="editor" v-show="!editor.isActive('customimage')" class="bubble-menu">
+    <bubble-menu v-if="mode !== 'simple'" :editor="editor" v-show="!editor.isActive('customimage')" class="bubble-menu">
       <button @click="editor.chain().focus().toggleHeading({ level: 1 }).run()" :class="{ 'is-active': editor.isActive('heading', { level: 1 }) }">
         <format-header1 />
       </button>
@@ -125,6 +124,9 @@ export default {
   },
 
   props: {
+    mode: {
+      type: String
+    },
     value: {
       type: String
     },
@@ -163,138 +165,158 @@ export default {
   },
 
   mounted() {
-    this.editor = new Editor({
-      extensions: [
-        StarterKit,
-        Underline,
-        Link.configure({
-          openOnClick: false,
-        }),
-        Placeholder.configure({
-          placeholder: this.placeholder ?? 'Write something...',
-        }),
-        Tag.configure({
-          HTMLAttributes: {
-            class: 'ptag',
+    const extensions = [
+      StarterKit.configure({
+        bold: this.mode === 'simple' ? false : true,
+        code: this.mode === 'simple' ? false : true,
+        italic: this.mode === 'simple' ? false : true,
+        strike: this.mode === 'simple' ? false : true,
+        blockquote: this.mode === 'simple' ? false : true,
+        bulletList: this.mode === 'simple' ? false : true,
+        codeBlock: this.mode === 'simple' ? false : true,
+        horizontalRule: this.mode === 'simple' ? false : true,
+        listItem: this.mode === 'simple' ? false : true,
+        orderedList: this.mode === 'simple' ? false : true,
+        horizontalRule: this.mode === 'simple' ? false : true,
+        heading: this.mode === 'simple' ? false : true
+      }),
+      Placeholder.configure({
+        placeholder: this.placeholder ?? 'Write something...',
+      }),
+      Tag.configure({
+        HTMLAttributes: {
+          class: 'ptag',
+        },
+        suggestion: {
+          char: '{{',
+          items: query => {
+            return this.tags.filter(item => item.toLowerCase().startsWith(query.toLowerCase())).slice(0, 10)
           },
-          suggestion: {
-            char: '{{',
-            items: query => {
-              return this.tags.filter(item => item.toLowerCase().startsWith(query.toLowerCase())).slice(0, 10)
-            },
-            render: () => {
-              let component
-              let popup
+          render: () => {
+            let component
+            let popup
 
-              return {
-                onStart: props => {
-                  component = new VueRenderer(MentionList, {
-                    parent: this,
-                    propsData: props,
-                  })
+            return {
+              onStart: props => {
+                component = new VueRenderer(MentionList, {
+                  parent: this,
+                  propsData: props,
+                })
 
-                  popup = tippy('body', {
-                    getReferenceClientRect: props.clientRect,
-                    appendTo: () => document.body,
-                    content: component.element,
-                    showOnCreate: true,
-                    interactive: true,
-                    trigger: 'manual',
-                    placement: 'bottom-start',
-                  })
-                },
-                onUpdate(props) {
-                  component.updateProps(props)
+                popup = tippy('body', {
+                  getReferenceClientRect: props.clientRect,
+                  appendTo: () => document.body,
+                  content: component.element,
+                  showOnCreate: true,
+                  interactive: true,
+                  trigger: 'manual',
+                  placement: 'bottom-start',
+                })
+              },
+              onUpdate(props) {
+                component.updateProps(props)
 
-                  popup[0].setProps({
-                    getReferenceClientRect: props.clientRect,
-                  })
-                },
-                onKeyDown(props) {
-                  if (props.event.key === 'Escape') {
-                    popup[0].hide()
+                popup[0].setProps({
+                  getReferenceClientRect: props.clientRect,
+                })
+              },
+              onKeyDown(props) {
+                if (props.event.key === 'Escape') {
+                  popup[0].hide()
 
-                    return true
-                  }
-
-                  return component.ref?.onKeyDown(props)
-                },
-                onExit() {
-                  popup[0].destroy()
-                  component.destroy()
-                },
-              }
-            },
-          }
-        }),
-        Mention.configure({
-          HTMLAttributes: {
-            class: 'mention',
-          },
-          renderLabel({ options, node }) {
-            return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`
-          },
-          suggestion: {
-            char: '@',
-            items: query => {
-              return this.mentions.filter(item => {
-                return item.value ?
-                  item.value.toLowerCase().startsWith(query.toLowerCase()) :
-                  item.toLowerCase().startsWith(query.toLowerCase())
-              }).slice(0, 10)
-            },
-            render: () => {
-              let component
-              let popup
-
-              return {
-                onStart: props => {
-                  component = new VueRenderer(MentionList, {
-                    parent: this,
-                    propsData: props,
-                  })
-
-                  popup = tippy('body', {
-                    getReferenceClientRect: props.clientRect,
-                    appendTo: () => document.body,
-                    content: component.element,
-                    showOnCreate: true,
-                    interactive: true,
-                    trigger: 'manual',
-                    placement: 'bottom-start',
-                  })
-                },
-                onUpdate(props) {
-                  component.updateProps(props)
-
-                  popup[0].setProps({
-                    getReferenceClientRect: props.clientRect,
-                  })
-                },
-                onKeyDown(props) {
-                  if (props.event.key === 'Escape') {
-                    popup[0].hide()
-
-                    return true
-                  }
-
-                  return component.ref?.onKeyDown(props)
-                },
-                onExit() {
-                  popup[0].destroy()
-                  component.destroy()
+                  return true
                 }
+
+                return component.ref?.onKeyDown(props)
+              },
+              onExit() {
+                popup[0].destroy()
+                component.destroy()
+              },
+            }
+          },
+        }
+      }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        renderLabel({ options, node }) {
+          return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`
+        },
+        suggestion: {
+          char: '@',
+          items: query => {
+            return this.mentions.filter(item => {
+              return item.value ?
+                item.value.toLowerCase().startsWith(query.toLowerCase()) :
+                item.toLowerCase().startsWith(query.toLowerCase())
+            }).slice(0, 10)
+          },
+          render: () => {
+            let component
+            let popup
+
+            return {
+              onStart: props => {
+                component = new VueRenderer(MentionList, {
+                  parent: this,
+                  propsData: props,
+                })
+
+                popup = tippy('body', {
+                  getReferenceClientRect: props.clientRect,
+                  appendTo: () => document.body,
+                  content: component.element,
+                  showOnCreate: true,
+                  interactive: true,
+                  trigger: 'manual',
+                  placement: 'bottom-start',
+                })
+              },
+              onUpdate(props) {
+                component.updateProps(props)
+
+                popup[0].setProps({
+                  getReferenceClientRect: props.clientRect,
+                })
+              },
+              onKeyDown(props) {
+                if (props.event.key === 'Escape') {
+                  popup[0].hide()
+
+                  return true
+                }
+
+                return component.ref?.onKeyDown(props)
+              },
+              onExit() {
+                popup[0].destroy()
+                component.destroy()
               }
             }
           }
-        }),
-        CustomImage.configure({
-          upload: uploadFile
+        }
+      })
+    ]
+    if (this.mode !== 'no-image') {
+      extensions.push(CustomImage.configure({
+        upload: uploadFile
+      }))
+    }
+    if (this.mode !== 'simple') {
+      extensions.push(
+        Underline,
+        Link.configure({
+          openOnClick: false,
         })
-      ],
+      )
+    }
+
+    this.editor = new Editor({
+      extensions,
       autofocus: this.autofocus,
       onUpdate: ({ editor }) => {
-        console.log(editor.getJSON())
         this.$emit("input", editor.getHTML())
       },
       content: this.value

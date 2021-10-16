@@ -1,8 +1,8 @@
-import { Plugin } from 'prosemirror-state'
+import { Plugin, PluginKey } from 'prosemirror-state'
 
 export const dropImagePlugin = (upload) => {
   return new Plugin({
-    key: 'drop-image',
+    key: new PluginKey('drop-image'),
     props: {
       handlePaste (view, event) {
         const items = Array.from(event.clipboardData?.items || [])
