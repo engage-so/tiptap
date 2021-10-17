@@ -11,10 +11,10 @@
         <format-header3 />
       </button>
       <button @click="editor.chain().focus().toggleBulletList().run()" :class="{ 'is-active': editor.isActive('bulletList') }">
-        <format-list-numbered />
+        <format-list-bulleted />
       </button>
       <button @click="editor.chain().focus().toggleOrderedList().run()" :class="{ 'is-active': editor.isActive('orderedList') }">
-        <format-list-bulleted />
+        <format-list-numbered />
       </button>
       <button v-if="mode !== 'no-image'">
         <label><image-area /><span style="display:none"><input type="file" accept="image/*" @change="uploadImage"></span></label>
@@ -47,10 +47,10 @@
         <format-strikethrough />
       </button>
       <button @click="editor.chain().focus().toggleBulletList().run()" :class="{ 'is-active': editor.isActive('bulletList') }">
-        <format-list-numbered />
+        <format-list-bulleted />
       </button>
       <button @click="editor.chain().focus().toggleOrderedList().run()" :class="{ 'is-active': editor.isActive('orderedList') }">
-        <format-list-bulleted />
+        <format-list-numbered />
       </button>
       <div class="link" v-show="showLinkPop">
         <form @submit.prevent="onSubmitLink"><input type="text" ref="url" @blur="hideLinkPop" placeholder="https://" v-model="linkUrl"><button type="button" @click="unsetLink"><close /></button></form>
