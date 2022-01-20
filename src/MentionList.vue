@@ -1,7 +1,7 @@
 <template>
-  <div class="items">
+  <div class="mention-items">
     <button
-      class="item"
+      class="mention-item"
       :class="{ 'is-selected': index === selectedIndex }"
       v-for="(item, index) in items"
       :key="index"
@@ -84,7 +84,7 @@ export default {
 </script>
 
 <style lang="scss">
-.items {
+.mention-items {
   position: relative;
   border-radius: 0.2rem;
   background: white;
@@ -97,7 +97,7 @@ export default {
   ;
 }
 
-.item {
+.mention-item {
   display: block;
   width: 100%;
   text-align: left;

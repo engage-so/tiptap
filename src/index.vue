@@ -330,6 +330,8 @@ export default {
   methods: {
     openLink() {
       this.showLinkPop = true
+      this.linkUrl = this.editor.getAttributes('link').href
+
       this.$nextTick(() => {
         this.$refs.url.focus()
       })
@@ -359,8 +361,10 @@ export default {
         .chain()
         .focus()
         .extendMarkRange('link')
-        .setLink({ href: this.linkUrl })
+        .setLink({ href: this.linkUrl, target: '_blank' })
         .run()
+
+      this.linkUrl = ''
     },
     unsetLink() {
       this.linkUrl = ''
